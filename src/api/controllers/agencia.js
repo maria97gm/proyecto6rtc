@@ -50,22 +50,25 @@ const deleteAgencia = async (req, res, next) => {
 const updateAgencia = async (req, res, next) => {
   try {
     const { id } = req.params
-    const updateData = req.body
+    const { destinosToAdd, destinosToRemove, ...otherUpdateData } = req.body
 
-    const agencia = await Agencia.findById(id)
+    const updateFields = { $set: otherUpdateData }
 
-    const { destinos, ...otherUpdateData } = updateData
-    Object.assign(agencia, otherUpdateData)
-
-    if (destinos) {
-      destinos.forEach((destinoId) => {
-        if (!agencia.destinos.includes(destinoId)) {
-          agencia.destinos.push(destinoId)
-        }
-      })
+    if (destinosToAdd) {
+      updateFields.$addToSet = {
+        destinos: { $each: destinosToAdd }
+      }
     }
 
-    const updatedAgencia = await agencia.save()
+    if (destinosToRemove) {
+      updateFields.$pull = {
+        destinos: { $in: destinosToRemove }
+      }
+    }
+
+    const updatedAgencia = await Agencia.findByIdAndUpdate(id, updateFields, {
+      new: true
+    })
 
     return res.status(201).json(updatedAgencia)
   } catch (error) {
